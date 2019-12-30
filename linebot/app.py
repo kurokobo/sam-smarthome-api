@@ -67,6 +67,7 @@ def on_message(line_event):
         message = re.sub(r" /v$", "", message)
 
     AIRCONTROL_ENDPOINT = os.getenv("AIRCONTROL_ENDPOINT")
+    QOAIR_ENDPOINT = os.getenv("QOAIR_ENDPOINT")
     ptn = {
         "AIRCONTROL_TURN_ON_WITH_MODE": re.compile(r".*((暖|冷)房|クーラ(ー|)).*(つ|付)けて.*"),
         "AIRCONTROL_TURN_ON": re.compile(r".*(つ|付)けて.*"),
@@ -74,7 +75,8 @@ def on_message(line_event):
         "AIRCONTROL_CHANGE_TEMPERATURE": re.compile(r".*([1-2][0-9]\s*度にして).*"),
         "AIRCONTROL_CHANGE_MODE": re.compile(r".*((暖|冷)房|クーラ(ー|))にして.*"),
         "AIRCONTROL_GET_CURRENT_SETTING": re.compile(r".*(いま|今).*設定.*"),
-        "DEBUG_GET_APPLIANCE_LIST": re.compile(r"/debug ac list"),
+        "DEBUG_AIRCONTROL_GET_APPLIANCE_LIST": re.compile(r"/debug ac list"),
+        "QOAIR_GET_CURRENT_QOA": re.compile(r".*(いま|今).*(空気|状態|どう|どんな感じ).*"),
     }
 
     res = {"None": "None"}
@@ -117,7 +119,7 @@ def on_message(line_event):
         res = post(AIRCONTROL_ENDPOINT, req)
 
         if "mode_ja" in res:
-            reply_body = "消したよ！"
+            reply_body = "%s消したよ！" % (res["mode_ja"])
         else:
             reply_body = reply_error
 
@@ -167,7 +169,7 @@ def on_message(line_event):
         else:
             reply_body = reply_error
 
-    elif ptn["DEBUG_GET_APPLIANCE_LIST"].fullmatch(message):
+    elif ptn["DEBUG_AIRCONTROL_GET_APPLIANCE_LIST"].fullmatch(message):
         req = {
             "operation": "get",
             "get": "debug_appliance_list",
@@ -181,9 +183,52 @@ def on_message(line_event):
                     cursor["id"],
                 )
 
+    elif ptn["QOAIR_GET_CURRENT_QOA"].fullmatch(message):
+        req = {
+            "operation": "get_current_qoa",
+        }
+        res = post(QOAIR_ENDPOINT, req)
+
+        # res["temperature"] = "19.4"
+        # res["humidity"] = "15"
+        # res["co2concentration"] = "1500"
+
+        if "temperature" in res:
+            reply_body = "室温は %s 度で湿度は %s %%、気圧は %s hPa！\n二酸化炭素濃度は %s ppm だって！" % (
+                res["temperature"],
+                res["humidity"],
+                res["airpressure"],
+                res["co2concentration"],
+            )
+            reply_body += qoair_comment(res)
+        else:
+            reply_body = reply_error
+
     reply_verbose["body"] += json.dumps(res, ensure_ascii=False) + "\n"
 
     if reply_verbose["reply"]:
         reply_body = reply_verbose["body"] + reply_body
 
     line_bot_api.reply_message(line_event.reply_token, TextSendMessage(text=reply_body))
+
+
+def qoair_comment(data):
+    comment = ""
+
+    if float(data["temperature"]) < 20:
+        comment += "寒いね！ 暖房つけない？ "
+    elif float(data["temperature"]) > 28:
+        comment += "暑くない？ 冷房つけない？ "
+
+    if float(data["humidity"]) < 40:
+        comment += "乾燥してるよ！ 気を付けて！ "
+    elif float(data["humidity"]) > 60:
+        comment += "ジメジメ気味！ 気を付けて！ "
+
+    if float(data["co2concentration"]) > 1000:
+        comment += "眠くなる二酸化炭素濃度だよ！ 換気しよう！"
+
+    if comment != "":
+        comment = "\n" + comment
+
+    return comment

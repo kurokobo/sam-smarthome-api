@@ -8,5 +8,5 @@ s3_prefix = ""
 region = ""
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
-parameter_overrides = "LineChannelSecret= LineChannelAccessToken= AirControlEndpoint= RemoAccessToken= RemoApplianceId="
+parameter_overrides = "LineChannelSecret= LineChannelAccessToken= AirControlEndpoint= QoAirEndpoint= RemoAccessToken= RemoApplianceId= RedisHost= RedisPort= RedisPassword="
 

@@ -17,10 +17,22 @@ Parameters:
   AirControlEndpoint:
     Type: String
     NoEcho: true
+  QoAirEndpoint:
+    Type: String
+    NoEcho: true
   RemoAccessToken:
     Type: String
     NoEcho: true
   RemoApplianceId:
+    Type: String
+    NoEcho: true
+  RedisHost:
+    Type: String
+    NoEcho: true
+  RedisPort:
+    Type: String
+    NoEcho: true
+  RedisPassword:
     Type: String
     NoEcho: true
 
@@ -42,6 +54,7 @@ Resources:
           LINE_CHANNEL_SECRET: !Ref LineChannelSecret
           LINE_CHANNEL_ACCESS_TOKEN: !Ref LineChannelAccessToken
           AIRCONTROL_ENDPOINT: !Ref AirControlEndpoint
+          QOAIR_ENDPOINT: !Ref QoAirEndpoint
   AirControlFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -58,4 +71,21 @@ Resources:
         Variables:
           REMO_ACCESS_TOKEN: !Ref RemoAccessToken
           REMO_APPLIANCE_ID: !Ref RemoApplianceId
+  QoAirFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: qoair/
+      Handler: app.lambda_handler
+      Runtime: python3.7
+      Events:
+        AirControl:
+          Type: Api
+          Properties:
+            Path: /api/v1/qoair
+            Method: post
+      Environment:
+        Variables:
+          REDIS_HOST: !Ref RedisHost
+          REDIS_PORT: !Ref RedisPort
+          REDIS_PASSWORD: !Ref RedisPassword
 

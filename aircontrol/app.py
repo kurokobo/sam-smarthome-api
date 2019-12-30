@@ -18,14 +18,12 @@ button_ja = {
 
 
 def lambda_handler(event, context):
-    # Convert request body to Dictionary
     input = json.loads(event["body"])
 
     print("Requested operation: %s" % input["operation"])
     if input["operation"] == "post":
         response_dict = aircon_setting(input)
     elif input["operation"] == "get":
-        print("Requested operation: get")
         response_dict = appliance(input)
 
     response = {
@@ -33,15 +31,6 @@ def lambda_handler(event, context):
         "headers": {},
         "body": json.dumps(response_dict),
     }
-    return response
-
-
-def build_response(statuscode, dict):
-    response = {
-        "statusCode": statuscode,
-        "body": json.dumps(dict),
-    }
-    print("Response with : %s" % response)
     return response
 
 
