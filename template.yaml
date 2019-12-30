@@ -1,0 +1,61 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Smart Home
+
+Globals:
+  Function:
+    Timeout: 300
+
+Parameters:
+  LineChannelSecret:
+    Type: String
+    NoEcho: true
+  LineChannelAccessToken:
+    Type: String
+    NoEcho: true
+  AirControlEndpoint:
+    Type: String
+    NoEcho: true
+  RemoAccessToken:
+    Type: String
+    NoEcho: true
+  RemoApplianceId:
+    Type: String
+    NoEcho: true
+
+Resources:
+  LineBotFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: linebot/
+      Handler: app.lambda_handler
+      Runtime: python3.7
+      Events:
+        LineBot:
+          Type: Api
+          Properties:
+            Path: /api/v1/linebot
+            Method: post
+      Environment:
+        Variables:
+          LINE_CHANNEL_SECRET: !Ref LineChannelSecret
+          LINE_CHANNEL_ACCESS_TOKEN: !Ref LineChannelAccessToken
+          AIRCONTROL_ENDPOINT: !Ref AirControlEndpoint
+  AirControlFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: aircontrol/
+      Handler: app.lambda_handler
+      Runtime: python3.7
+      Events:
+        AirControl:
+          Type: Api
+          Properties:
+            Path: /api/v1/aircontrol
+            Method: post
+      Environment:
+        Variables:
+          REMO_ACCESS_TOKEN: !Ref RemoAccessToken
+          REMO_APPLIANCE_ID: !Ref RemoApplianceId
+
