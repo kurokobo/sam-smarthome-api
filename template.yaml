@@ -20,6 +20,9 @@ Parameters:
   QoAirEndpoint:
     Type: String
     NoEcho: true
+  SmartHomeAccessToken:
+    Type: String
+    NoEcho: true
   RemoAccessToken:
     Type: String
     NoEcho: true
@@ -42,7 +45,7 @@ Resources:
     Properties:
       CodeUri: linebot/
       Handler: app.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       Events:
         LineBot:
           Type: Api
@@ -51,6 +54,7 @@ Resources:
             Method: post
       Environment:
         Variables:
+          SMARTHOME_ACCESS_TOKEN: !Ref SmartHomeAccessToken
           LINE_CHANNEL_SECRET: !Ref LineChannelSecret
           LINE_CHANNEL_ACCESS_TOKEN: !Ref LineChannelAccessToken
           AIRCONTROL_ENDPOINT: !Ref AirControlEndpoint
@@ -60,7 +64,7 @@ Resources:
     Properties:
       CodeUri: aircontrol/
       Handler: app.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       Events:
         AirControl:
           Type: Api
@@ -69,6 +73,7 @@ Resources:
             Method: post
       Environment:
         Variables:
+          SMARTHOME_ACCESS_TOKEN: !Ref SmartHomeAccessToken
           REMO_ACCESS_TOKEN: !Ref RemoAccessToken
           REMO_APPLIANCE_ID: !Ref RemoApplianceId
   QoAirFunction:
@@ -76,7 +81,7 @@ Resources:
     Properties:
       CodeUri: qoair/
       Handler: app.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       Events:
         AirControl:
           Type: Api
@@ -85,6 +90,7 @@ Resources:
             Method: post
       Environment:
         Variables:
+          SMARTHOME_ACCESS_TOKEN: !Ref SmartHomeAccessToken
           REDIS_HOST: !Ref RedisHost
           REDIS_PORT: !Ref RedisPort
           REDIS_PASSWORD: !Ref RedisPassword

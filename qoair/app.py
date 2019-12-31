@@ -1,5 +1,6 @@
 import json
 import os
+import secrets
 
 import redis
 
@@ -15,9 +16,25 @@ def setup_redis():
     return redisdb
 
 
-def lambda_handler(event, context):
-    input = json.loads(event["body"])
+def is_authorized(event):
+    if "X-SmartHome-Authorization" in event["headers"] and secrets.compare_digest(
+        event["headers"]["X-SmartHome-Authorization"],
+        os.getenv("SMARTHOME_ACCESS_TOKEN"),
+    ):
+        print("Authorized access")
+        return True
+    print("Unuthorized access")
+    return False
 
+
+def lambda_handler(event, context):
+    if not is_authorized(event):
+        return {
+            "statusCode": 403,
+            "body": "Forbidden",
+        }
+
+    input = json.loads(event["body"])
     print("Requested operation: %s" % input["operation"])
     if input["operation"] == "get_current_qoa":
         response_dict = get_current_qoa()

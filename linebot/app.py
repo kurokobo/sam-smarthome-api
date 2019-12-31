@@ -42,12 +42,19 @@ def lambda_handler(event, context):
     return response_ok
 
 
-def post(url, dict):
+def post_lambda(url, dict):
     body = json.dumps(dict)
     print("Invoke POST with url : %s" % url)
     print("Invoke POST with data : %s" % body)
 
-    response = requests.post(url, body, headers={"Content-Type": "application/json"})
+    response = requests.post(
+        url,
+        body,
+        headers={
+            "Content-Type": "application/json",
+            "X-SmartHome-Authorization": os.getenv("SMARTHOME_ACCESS_TOKEN"),
+        },
+    )
     print("Response body is : %s" % response.json())
 
     return response.json()
@@ -92,7 +99,7 @@ def on_message(line_event):
             "switch": "ON",
             "mode": mode,
         }
-        res = post(AIRCONTROL_ENDPOINT, req)
+        res = post_lambda(AIRCONTROL_ENDPOINT, req)
 
         if "mode_ja" in res:
             reply_body = "%sつけたよ！ %s 度になってる！" % (res["mode_ja"], res["temp"])
@@ -104,7 +111,7 @@ def on_message(line_event):
             "operation": "post",
             "switch": "ON",
         }
-        res = post(AIRCONTROL_ENDPOINT, req)
+        res = post_lambda(AIRCONTROL_ENDPOINT, req)
 
         if "mode_ja" in res:
             reply_body = "%sつけたよ！ %s 度になってる！" % (res["mode_ja"], res["temp"])
@@ -116,7 +123,7 @@ def on_message(line_event):
             "operation": "post",
             "switch": "OFF",
         }
-        res = post(AIRCONTROL_ENDPOINT, req)
+        res = post_lambda(AIRCONTROL_ENDPOINT, req)
 
         if "mode_ja" in res:
             reply_body = "%s消したよ！" % (res["mode_ja"])
@@ -129,7 +136,7 @@ def on_message(line_event):
             "operation": "post",
             "temperature": match.group(),
         }
-        res = post(AIRCONTROL_ENDPOINT, req)
+        res = post_lambda(AIRCONTROL_ENDPOINT, req)
 
         if "mode_ja" in res:
             reply_body = "%s 度にしたよ！ %sね！" % (res["temp"], res["mode_ja"])
@@ -146,7 +153,7 @@ def on_message(line_event):
             "operation": "post",
             "mode": mode,
         }
-        res = post(AIRCONTROL_ENDPOINT, req)
+        res = post_lambda(AIRCONTROL_ENDPOINT, req)
 
         if "mode_ja" in res:
             reply_body = "%sにしたよ！ %s 度ね！" % (res["mode_ja"], res["temp"])
@@ -158,7 +165,7 @@ def on_message(line_event):
             "operation": "get",
             "get": "current_setting",
         }
-        res = post(AIRCONTROL_ENDPOINT, req)
+        res = post_lambda(AIRCONTROL_ENDPOINT, req)
 
         if "mode_ja" in res:
             reply_body = "今は%sで、電源は%s！ 設定は%s度！" % (
@@ -174,7 +181,7 @@ def on_message(line_event):
             "operation": "get",
             "get": "debug_appliance_list",
         }
-        res = post(AIRCONTROL_ENDPOINT, req)
+        res = post_lambda(AIRCONTROL_ENDPOINT, req)
         if len(res) > 0:
             for cursor in res:
                 reply_body += "%s (%s): %s\n" % (
@@ -187,7 +194,7 @@ def on_message(line_event):
         req = {
             "operation": "get_current_qoa",
         }
-        res = post(QOAIR_ENDPOINT, req)
+        res = post_lambda(QOAIR_ENDPOINT, req)
 
         # res["temperature"] = "19.4"
         # res["humidity"] = "15"
