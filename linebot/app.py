@@ -2,7 +2,7 @@ import json
 import os
 import re
 
-import requests
+import boto3
 
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError, LineBotApiError
@@ -42,22 +42,28 @@ def lambda_handler(event, context):
     return response_ok
 
 
-def post_lambda(url, dict):
-    body = json.dumps(dict)
-    print("Invoke POST with url : %s" % url)
-    print("Invoke POST with data : %s" % body)
+def post_lambda(name, dict):
 
-    response = requests.post(
-        url,
-        body,
-        headers={
-            "Content-Type": "application/json",
-            "X-SmartHome-Authorization": os.getenv("SMARTHOME_ACCESS_TOKEN"),
+    print("Invoke Lambda : %s" % name)
+    print("Invoke Lambda with data : %s" % dict)
+    request = {
+        "headers": {
+            "X-Smarthome-Authorization": os.getenv("SMARTHOME_ACCESS_TOKEN"),
         },
-    )
-    print("Response body is : %s" % response.json())
+        "body": json.dumps(dict),
+    }
 
-    return response.json()
+    response = boto3.client("lambda").invoke(
+        FunctionName=name,
+        InvocationType="RequestResponse",
+        Payload=json.dumps(request),
+    )['Payload'].read().decode('utf-8')
+
+    response = json.loads(response)["body"]
+    response = json.loads(response)
+
+    print("Response body is : %s" % response)
+    return response
 
 
 @handler.add(MessageEvent, message=TextMessage)
@@ -73,8 +79,9 @@ def on_message(line_event):
         reply_verbose["reply"] = True
         message = re.sub(r" /v$", "", message)
 
-    AIRCONTROL_ENDPOINT = os.getenv("AIRCONTROL_ENDPOINT")
-    QOAIR_ENDPOINT = os.getenv("QOAIR_ENDPOINT")
+    LAMBDA_AIRCONTROL = "SMARTHOME-AirControl"
+    LAMBDA_QOAIR = "SMARTHOME-QoAir"
+
     ptn = {
         "AIRCONTROL_TURN_ON_WITH_MODE": re.compile(r".*((暖|冷)房|クーラ(ー|)).*(つ|付)けて.*"),
         "AIRCONTROL_TURN_ON": re.compile(r".*(つ|付)けて.*"),
@@ -83,7 +90,8 @@ def on_message(line_event):
         "AIRCONTROL_CHANGE_MODE": re.compile(r".*((暖|冷)房|クーラ(ー|))にして.*"),
         "AIRCONTROL_GET_CURRENT_SETTING": re.compile(r".*(いま|今).*設定.*"),
         "DEBUG_AIRCONTROL_GET_APPLIANCE_LIST": re.compile(r"/debug ac list"),
-        "QOAIR_GET_CURRENT_QOA": re.compile(r".*(いま|今).*(空気|状態|どう|どんな感じ).*"),
+        "QOAIR_GET_CURRENT_QOA": re.compile(r".*(いま|今).*(空気|状態|どう|どんな(感じ|かんじ)).*"),
+        "QOAIR_GET_GRAPH": re.compile(r".*グラフ.*"),
     }
 
     res = {"None": "None"}
@@ -99,7 +107,7 @@ def on_message(line_event):
             "switch": "ON",
             "mode": mode,
         }
-        res = post_lambda(AIRCONTROL_ENDPOINT, req)
+        res = post_lambda(LAMBDA_AIRCONTROL, req)
 
         if "mode_ja" in res:
             reply_body = "%sつけたよ！ %s 度になってる！" % (res["mode_ja"], res["temp"])
@@ -111,7 +119,7 @@ def on_message(line_event):
             "operation": "post",
             "switch": "ON",
         }
-        res = post_lambda(AIRCONTROL_ENDPOINT, req)
+        res = post_lambda(LAMBDA_AIRCONTROL, req)
 
         if "mode_ja" in res:
             reply_body = "%sつけたよ！ %s 度になってる！" % (res["mode_ja"], res["temp"])
@@ -123,7 +131,7 @@ def on_message(line_event):
             "operation": "post",
             "switch": "OFF",
         }
-        res = post_lambda(AIRCONTROL_ENDPOINT, req)
+        res = post_lambda(LAMBDA_AIRCONTROL, req)
 
         if "mode_ja" in res:
             reply_body = "%s消したよ！" % (res["mode_ja"])
@@ -136,7 +144,7 @@ def on_message(line_event):
             "operation": "post",
             "temperature": match.group(),
         }
-        res = post_lambda(AIRCONTROL_ENDPOINT, req)
+        res = post_lambda(LAMBDA_AIRCONTROL, req)
 
         if "mode_ja" in res:
             reply_body = "%s 度にしたよ！ %sね！" % (res["temp"], res["mode_ja"])
@@ -153,7 +161,7 @@ def on_message(line_event):
             "operation": "post",
             "mode": mode,
         }
-        res = post_lambda(AIRCONTROL_ENDPOINT, req)
+        res = post_lambda(LAMBDA_AIRCONTROL, req)
 
         if "mode_ja" in res:
             reply_body = "%sにしたよ！ %s 度ね！" % (res["mode_ja"], res["temp"])
@@ -165,10 +173,10 @@ def on_message(line_event):
             "operation": "get",
             "get": "current_setting",
         }
-        res = post_lambda(AIRCONTROL_ENDPOINT, req)
+        res = post_lambda(LAMBDA_AIRCONTROL, req)
 
         if "mode_ja" in res:
-            reply_body = "今は%sで、電源は%s！ 設定は%s度！" % (
+            reply_body = "今は%sで、電源は%s。設定は%s度！" % (
                 res["mode_ja"],
                 res["button_ja"],
                 res["temp"],
@@ -181,7 +189,7 @@ def on_message(line_event):
             "operation": "get",
             "get": "debug_appliance_list",
         }
-        res = post_lambda(AIRCONTROL_ENDPOINT, req)
+        res = post_lambda(LAMBDA_AIRCONTROL, req)
         if len(res) > 0:
             for cursor in res:
                 reply_body += "%s (%s): %s\n" % (
@@ -194,20 +202,29 @@ def on_message(line_event):
         req = {
             "operation": "get_current_qoa",
         }
-        res = post_lambda(QOAIR_ENDPOINT, req)
-
-        # res["temperature"] = "19.4"
-        # res["humidity"] = "15"
-        # res["co2concentration"] = "1500"
+        res = post_lambda(LAMBDA_QOAIR, req)
 
         if "temperature" in res:
-            reply_body = "室温は %s 度で湿度は %s %%、気圧は %s hPa！\n二酸化炭素濃度は %s ppm だって！" % (
+            reply_body = "室温は %s 度で湿度は %s %%、気圧は %s hPa。\n二酸化炭素濃度は %s ppm だって！" % (
                 res["temperature"],
                 res["humidity"],
                 res["airpressure"],
                 res["co2concentration"],
             )
             reply_body += qoair_comment(res)
+        else:
+            reply_body = reply_error
+
+    elif ptn["QOAIR_GET_GRAPH"].fullmatch(message):
+        req = {
+            "operation": "get_graph",
+            "graph_type": "temperature",
+            "graph_duration": "6h",
+        }
+        res = post_lambda(LAMBDA_QOAIR, req)
+
+        if "message" in res:
+            reply_body = "ちょっとまってね。"
         else:
             reply_body = reply_error
 
@@ -223,17 +240,17 @@ def qoair_comment(data):
     comment = ""
 
     if float(data["temperature"]) < 20:
-        comment += "寒いね！ 暖房つけない？ "
+        comment += "寒いね、暖房つけない？ "
     elif float(data["temperature"]) > 28:
-        comment += "暑くない？ 冷房つけない？ "
+        comment += "暑いね…… 冷房つけない？ "
 
     if float(data["humidity"]) < 40:
-        comment += "乾燥してるよ！ 気を付けて！ "
+        comment += "乾燥してるね、気を付けて！ "
     elif float(data["humidity"]) > 60:
-        comment += "ジメジメ気味！ 気を付けて！ "
+        comment += "ジメジメ気味だよ、気を付けて！ "
 
     if float(data["co2concentration"]) > 1000:
-        comment += "眠くなる二酸化炭素濃度だよ！ 換気しよう！"
+        comment += "眠くなる二酸化炭素濃度だよ、換気しよう！"
 
     if comment != "":
         comment = "\n" + comment

@@ -14,12 +14,6 @@ Parameters:
   LineChannelAccessToken:
     Type: String
     NoEcho: true
-  AirControlEndpoint:
-    Type: String
-    NoEcho: true
-  QoAirEndpoint:
-    Type: String
-    NoEcho: true
   SmartHomeAccessToken:
     Type: String
     NoEcho: true
@@ -38,13 +32,77 @@ Parameters:
   RedisPassword:
     Type: String
     NoEcho: true
+  InfluxDBUrl:
+    Type: String
+    NoEcho: true
+  InfluxDBToken:
+    Type: String
+    NoEcho: true
+  InfluxDBOrganization:
+    Type: String
+    NoEcho: true
+  InfluxDBBucket:
+    Type: String
+    NoEcho: true
+  S3Bucket:
+    Type: String
+    NoEcho: true
+  S3BucketDir:
+    Type: String
+    NoEcho: true
 
 Resources:
-  LineBotFunction:
+  LineBotRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: LineBotPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "lambda:InvokeFunction"
+                Resource: "*"
+  QoAirRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: QoAirPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "lambda:InvokeFunction"
+                Resource: "*"
+  LineBot:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: SMARTHOME-LineBot
       CodeUri: linebot/
       Handler: app.lambda_handler
+      Role: !GetAtt LineBotRole.Arn
       Runtime: python3.8
       Events:
         LineBot:
@@ -57,11 +115,10 @@ Resources:
           SMARTHOME_ACCESS_TOKEN: !Ref SmartHomeAccessToken
           LINE_CHANNEL_SECRET: !Ref LineChannelSecret
           LINE_CHANNEL_ACCESS_TOKEN: !Ref LineChannelAccessToken
-          AIRCONTROL_ENDPOINT: !Ref AirControlEndpoint
-          QOAIR_ENDPOINT: !Ref QoAirEndpoint
-  AirControlFunction:
+  AirControl:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: SMARTHOME-AirControl
       CodeUri: aircontrol/
       Handler: app.lambda_handler
       Runtime: python3.8
@@ -76,11 +133,13 @@ Resources:
           SMARTHOME_ACCESS_TOKEN: !Ref SmartHomeAccessToken
           REMO_ACCESS_TOKEN: !Ref RemoAccessToken
           REMO_APPLIANCE_ID: !Ref RemoApplianceId
-  QoAirFunction:
+  QoAir:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: SMARTHOME-QoAir
       CodeUri: qoair/
       Handler: app.lambda_handler
+      Role: !GetAtt QoAirRole.Arn
       Runtime: python3.8
       Events:
         AirControl:
@@ -94,4 +153,18 @@ Resources:
           REDIS_HOST: !Ref RedisHost
           REDIS_PORT: !Ref RedisPort
           REDIS_PASSWORD: !Ref RedisPassword
-
+  Graph:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: SMARTHOME-Graph
+      CodeUri: graph/
+      Handler: app.lambda_handler
+      Runtime: python3.8
+      Environment:
+        Variables:
+          INFLUXDB_URL: !Ref InfluxDBUrl
+          INFLUXDB_TOKEN: !Ref InfluxDBToken
+          INFLUXDB_ORGANIZATION: !Ref InfluxDBOrganization
+          INFLUXDB_BUCKET: !Ref InfluxDBBucket
+          S3_BUCKET: !Ref S3Bucket
+          S3_BUCKET_DIR: !Ref S3BucketDir

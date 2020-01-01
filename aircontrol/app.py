@@ -19,8 +19,8 @@ button_ja = {
 
 
 def is_authorized(event):
-    if "X-SmartHome-Authorization" in event["headers"] and secrets.compare_digest(
-        event["headers"]["X-SmartHome-Authorization"],
+    if "X-Smarthome-Authorization" in event["headers"] and secrets.compare_digest(
+        event["headers"]["X-Smarthome-Authorization"],
         os.getenv("SMARTHOME_ACCESS_TOKEN"),
     ):
         print("Authorized access")
@@ -33,7 +33,7 @@ def lambda_handler(event, context):
     if not is_authorized(event):
         return {
             "statusCode": 403,
-            "body": "Forbidden",
+            "body": {"message": "Forbidden"},
         }
 
     input = json.loads(event["body"])

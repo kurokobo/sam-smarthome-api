@@ -8,5 +8,5 @@ s3_prefix = ""
 region = ""
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
-parameter_overrides = "LineChannelSecret= LineChannelAccessToken= AirControlEndpoint= QoAirEndpoint= SmartHomeAccessToken= RemoAccessToken= RemoApplianceId= RedisHost= RedisPort= RedisPassword="
+parameter_overrides = "LineChannelSecret= LineChannelAccessToken= SmartHomeAccessToken= RemoAccessToken= RemoApplianceId= RedisHost= RedisPort= RedisPassword= InfluxDBUrl= InfluxDBToken= InfluxDBOrganization= InfluxDBBucket= S3Bucket= S3BucketDir="
 
