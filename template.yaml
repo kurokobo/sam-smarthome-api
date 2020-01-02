@@ -47,9 +47,6 @@ Parameters:
   S3Bucket:
     Type: String
     NoEcho: true
-  S3BucketDir:
-    Type: String
-    NoEcho: true
 
 Resources:
   LineBotRole:
@@ -96,6 +93,33 @@ Resources:
                 Action:
                   - "lambda:InvokeFunction"
                 Resource: "*"
+  GraphRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: GraphPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "lambda:InvokeFunction"
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - "s3:*"
+                Resource: 
+                  - !Sub "arn:aws:s3:::${S3Bucket}*"
   LineBot:
     Type: AWS::Serverless::Function
     Properties:
@@ -159,7 +183,9 @@ Resources:
       FunctionName: SMARTHOME-Graph
       CodeUri: graph/
       Handler: app.lambda_handler
+      Role: !GetAtt GraphRole.Arn
       Runtime: python3.8
+      MemorySize: 320
       Environment:
         Variables:
           INFLUXDB_URL: !Ref InfluxDBUrl
@@ -167,4 +193,16 @@ Resources:
           INFLUXDB_ORGANIZATION: !Ref InfluxDBOrganization
           INFLUXDB_BUCKET: !Ref InfluxDBBucket
           S3_BUCKET: !Ref S3Bucket
-          S3_BUCKET_DIR: !Ref S3BucketDir
+  LineBotPush:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: SMARTHOME-LineBot-Push
+      CodeUri: linebot-push/
+      Handler: app.lambda_handler
+      Role: !GetAtt GraphRole.Arn
+      Runtime: python3.8
+      MemorySize: 320
+      Environment:
+        Variables:
+          LINE_CHANNEL_ACCESS_TOKEN: !Ref LineChannelAccessToken
+        

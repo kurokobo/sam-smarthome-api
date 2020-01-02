@@ -15,6 +15,8 @@ handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
 def lambda_handler(event, context):
     signature = event["headers"]["X-Line-Signature"]
     body = event["body"]
+    print("Message received with boty: %s" % body)
+
     response_ok = {
         "statusCode": 200,
         "headers": {},
@@ -47,17 +49,20 @@ def post_lambda(name, dict):
     print("Invoke Lambda : %s" % name)
     print("Invoke Lambda with data : %s" % dict)
     request = {
-        "headers": {
-            "X-Smarthome-Authorization": os.getenv("SMARTHOME_ACCESS_TOKEN"),
-        },
+        "headers": {"X-Smarthome-Authorization": os.getenv("SMARTHOME_ACCESS_TOKEN")},
         "body": json.dumps(dict),
     }
 
-    response = boto3.client("lambda").invoke(
-        FunctionName=name,
-        InvocationType="RequestResponse",
-        Payload=json.dumps(request),
-    )['Payload'].read().decode('utf-8')
+    response = (
+        boto3.client("lambda")
+        .invoke(
+            FunctionName=name,
+            InvocationType="RequestResponse",
+            Payload=json.dumps(request),
+        )["Payload"]
+        .read()
+        .decode("utf-8")
+    )
 
     response = json.loads(response)["body"]
     response = json.loads(response)
@@ -69,13 +74,14 @@ def post_lambda(name, dict):
 @handler.add(MessageEvent, message=TextMessage)
 def on_message(line_event):
 
+    print("Received line event: %s" % line_event)
     message = line_event.message.text
 
     reply_verbose = {"reply": False, "body": ""}
     reply_body = ""
     reply_error = "ごめん、なんかエラーだって…… もう一回やってみて！"
 
-    if re.fullmatch(r".* /v$", message):
+    if re.search(r".* /v$", message):
         reply_verbose["reply"] = True
         message = re.sub(r" /v$", "", message)
 
@@ -83,20 +89,20 @@ def on_message(line_event):
     LAMBDA_QOAIR = "SMARTHOME-QoAir"
 
     ptn = {
-        "AIRCONTROL_TURN_ON_WITH_MODE": re.compile(r".*((暖|冷)房|クーラ(ー|)).*(つ|付)けて.*"),
-        "AIRCONTROL_TURN_ON": re.compile(r".*(つ|付)けて.*"),
-        "AIRCONTROL_TURN_OFF": re.compile(r".*(け|消)して.*"),
-        "AIRCONTROL_CHANGE_TEMPERATURE": re.compile(r".*([1-2][0-9]\s*度にして).*"),
-        "AIRCONTROL_CHANGE_MODE": re.compile(r".*((暖|冷)房|クーラ(ー|))にして.*"),
-        "AIRCONTROL_GET_CURRENT_SETTING": re.compile(r".*(いま|今).*設定.*"),
+        "AIRCONTROL_TURN_ON_WITH_MODE": re.compile(r"((暖|冷)房|クーラ(ー|)).*(つ|付)けて"),
+        "AIRCONTROL_TURN_ON": re.compile(r"(つ|付)けて"),
+        "AIRCONTROL_TURN_OFF": re.compile(r"(け|消)して"),
+        "AIRCONTROL_CHANGE_TEMPERATURE": re.compile(r"([1-2][0-9]\s*度にして)"),
+        "AIRCONTROL_CHANGE_MODE": re.compile(r"((暖|冷)房|クーラ(ー|))にして"),
+        "AIRCONTROL_GET_CURRENT_SETTING": re.compile(r"(いま|今).*設定"),
         "DEBUG_AIRCONTROL_GET_APPLIANCE_LIST": re.compile(r"/debug ac list"),
-        "QOAIR_GET_CURRENT_QOA": re.compile(r".*(いま|今).*(空気|状態|どう|どんな(感じ|かんじ)).*"),
-        "QOAIR_GET_GRAPH": re.compile(r".*グラフ.*"),
+        "QOAIR_GET_CURRENT_QOA": re.compile(r"(いま|今).*(空気|状態|どう|どんな(感じ|かんじ))"),
+        "QOAIR_GET_GRAPH": re.compile(r"グラフ|推移|経緯"),
     }
 
     res = {"None": "None"}
 
-    if ptn["AIRCONTROL_TURN_ON_WITH_MODE"].fullmatch(message):
+    if ptn["AIRCONTROL_TURN_ON_WITH_MODE"].search(message):
         if re.search(r"冷房|クーラ(ー|)", message):
             mode = "cooling"
         else:
@@ -114,7 +120,7 @@ def on_message(line_event):
         else:
             reply_body = reply_error
 
-    elif ptn["AIRCONTROL_TURN_ON"].fullmatch(message):
+    elif ptn["AIRCONTROL_TURN_ON"].search(message):
         req = {
             "operation": "post",
             "switch": "ON",
@@ -126,7 +132,7 @@ def on_message(line_event):
         else:
             reply_body = reply_error
 
-    elif ptn["AIRCONTROL_TURN_OFF"].fullmatch(message):
+    elif ptn["AIRCONTROL_TURN_OFF"].search(message):
         req = {
             "operation": "post",
             "switch": "OFF",
@@ -138,7 +144,7 @@ def on_message(line_event):
         else:
             reply_body = reply_error
 
-    elif ptn["AIRCONTROL_CHANGE_TEMPERATURE"].fullmatch(message):
+    elif ptn["AIRCONTROL_CHANGE_TEMPERATURE"].search(message):
         match = re.search(r"[1-2][0-9]+", message)
         req = {
             "operation": "post",
@@ -151,7 +157,7 @@ def on_message(line_event):
         else:
             reply_body = reply_error
 
-    elif ptn["AIRCONTROL_CHANGE_MODE"].fullmatch(message):
+    elif ptn["AIRCONTROL_CHANGE_MODE"].search(message):
         if re.search(r"冷房|クーラ(ー|)", message):
             mode = "cooling"
         else:
@@ -168,7 +174,7 @@ def on_message(line_event):
         else:
             reply_body = reply_error
 
-    elif ptn["AIRCONTROL_GET_CURRENT_SETTING"].fullmatch(message):
+    elif ptn["AIRCONTROL_GET_CURRENT_SETTING"].search(message):
         req = {
             "operation": "get",
             "get": "current_setting",
@@ -184,7 +190,7 @@ def on_message(line_event):
         else:
             reply_body = reply_error
 
-    elif ptn["DEBUG_AIRCONTROL_GET_APPLIANCE_LIST"].fullmatch(message):
+    elif ptn["DEBUG_AIRCONTROL_GET_APPLIANCE_LIST"].search(message):
         req = {
             "operation": "get",
             "get": "debug_appliance_list",
@@ -198,7 +204,7 @@ def on_message(line_event):
                     cursor["id"],
                 )
 
-    elif ptn["QOAIR_GET_CURRENT_QOA"].fullmatch(message):
+    elif ptn["QOAIR_GET_CURRENT_QOA"].search(message):
         req = {
             "operation": "get_current_qoa",
         }
@@ -215,12 +221,54 @@ def on_message(line_event):
         else:
             reply_body = reply_error
 
-    elif ptn["QOAIR_GET_GRAPH"].fullmatch(message):
+    elif ptn["QOAIR_GET_GRAPH"].search(message):
         req = {
             "operation": "get_graph",
-            "graph_type": "temperature",
-            "graph_duration": "6h",
+            "send_to_line_user": line_event.source.user_id,
+            "send_to_line_message": "できたよ！",
         }
+
+        ptns = [
+            {
+                "type": "all",
+                "regex": r"全部"
+            },
+            {
+                "type": "temperature",
+                "regex": r"温度"
+            },
+            {
+                "type": "humidity",
+                "regex": r"湿度"
+            },
+            {
+                "type": "airpressure",
+                "regex": r"気圧"
+            },
+            {
+                "type": "co2concentration",
+                "regex": r"二酸化炭素|濃度"
+            }
+        ]
+
+        graph_type = "all"
+        for ptn in ptns:
+            if re.search(ptn["regex"], message):
+                graph_type = ptn["type"]
+
+        req["graph_type"] = graph_type
+
+        req["graph_duration"] = "6h"
+        match = re.search(r"(?P<duration>[0-9]+) *(?P<unit>時間|分)", message)
+        if match:
+            unit = {
+                "時間": "h",
+                "分": "m",
+            }
+            req["graph_duration"] = match.group("duration")
+            req["graph_duration"] += unit[match.group("unit")]
+
+        print("Request generate and send graph: %s" % req)
         res = post_lambda(LAMBDA_QOAIR, req)
 
         if "message" in res:

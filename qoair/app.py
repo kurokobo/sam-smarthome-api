@@ -2,8 +2,9 @@ import json
 import os
 import secrets
 
-import redis
 import boto3
+
+import redis
 
 
 def setup_redis():
@@ -42,10 +43,19 @@ def lambda_handler(event, context):
         response_dict = get_current_qoa()
 
     elif input["operation"] == "get_graph":
-        if "graph_duration" in input["operation"]:
-            response_dict = generate_graph(input["graph_type"], input["graph_duration"])
+        if "graph_duration" in input:
+            response_dict = generate_and_send_graph(
+                input["send_to_line_user"],
+                input["send_to_line_message"],
+                input["graph_type"],
+                input["graph_duration"],
+            )
         else:
-            response_dict = generate_graph(input["graph_type"])
+            response_dict = generate_and_send_graph(
+                input["send_to_line_user"],
+                input["send_to_line_message"],
+                input["graph_type"],
+            )
 
     response = {
         "statusCode": 200,
@@ -75,13 +85,19 @@ def get_value_from_db(db, key, type):
         return f"{float(value):.1f}"
 
 
-def generate_graph(type="all", duration="6h"):
+def generate_and_send_graph(
+    send_to_line_user, send_to_line_message, type="all", duration="6h"
+):
     print("Requested graph: %s" % type)
     print("Requested duration: %s" % duration)
+    print("Send graph to: %s" % send_to_line_user)
+    print("Send graph with message: %s" % send_to_line_message)
 
     event = {
         "type": type,
         "duration": duration,
+        "send_to_line_user": send_to_line_user,
+        "send_to_line_message": send_to_line_message,
     }
     print("Throw process to Graph function with values: %s" % event)
     lambdaclient = boto3.client("lambda")

@@ -2,3 +2,4 @@ pandas
 influxdb-client
 matplotlib
 seaborn
+pillow
