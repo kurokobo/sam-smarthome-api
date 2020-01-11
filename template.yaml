@@ -47,6 +47,18 @@ Parameters:
   S3Bucket:
     Type: String
     NoEcho: true
+  TuyaDeviceId:
+    Type: String
+    NoEcho: true
+  TuyaLocalKey:
+    Type: String
+    NoEcho: true
+  TuyaIpAddress:
+    Type: String
+    NoEcho: true
+  IotCoreEndpoint:
+    Type: String
+    NoEcho: true
 
 Resources:
   LineBotRole:
@@ -199,10 +211,22 @@ Resources:
       FunctionName: SMARTHOME-LineBot-Push
       CodeUri: linebot-push/
       Handler: app.lambda_handler
-      Role: !GetAtt GraphRole.Arn
       Runtime: python3.8
-      MemorySize: 320
       Environment:
         Variables:
           LINE_CHANNEL_ACCESS_TOKEN: !Ref LineChannelAccessToken
+  Humidifier:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: SMARTHOME-Humidifier
+      CodeUri: humidifier/
+      Handler: app.lambda_handler
+      Runtime: python3.8
+      Environment:
+        Variables:
+          SMARTHOME_ACCESS_TOKEN: !Ref SmartHomeAccessToken
+          IOT_CORE_ENDPOINT: !Ref IotCoreEndpoint
+          TUYA_DEVICE_ID: !Ref TuyaDeviceId
+          TUYA_LOCAL_KEY: !Ref TuyaLocalKey
+          TUYA_IP_ADDRESS: !Ref TuyaIpAddress
         

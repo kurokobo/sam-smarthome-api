@@ -28,9 +28,9 @@ def lambda_handler(event, context):
     df = influxdb.get_dataframe(event["type"], event["duration"])
     images = graph.generate_graph(df)
 
-    now = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+    now = datetime.datetime.now().strftime("%m%d%H%M%S")
     filename_full = "g-%s-%s.jpg" % (event["type"][0:3], now)
-    filename_thumb = "g-%s-%s_thumb.jpg" % (event["type"][0:3], now)
+    filename_thumb = "g-%s-%st.jpg" % (event["type"][0:3], now)
 
     uploads = [
         {"type": "full", "filename": filename_full, "image": images["full"]},

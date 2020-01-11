@@ -87,8 +87,11 @@ def on_message(line_event):
 
     LAMBDA_AIRCONTROL = "SMARTHOME-AirControl"
     LAMBDA_QOAIR = "SMARTHOME-QoAir"
+    LAMBDA_HUMIDIFIER = "SMARTHOME-Humidifier"
 
     ptn = {
+        "HUMIDIFIER_TURN_ON": re.compile(r"(加湿器).*(つ|付)けて"),
+        "HUMIDIFIER_TURN_OFF": re.compile(r"(加湿器).*(け|消)して"),
         "AIRCONTROL_TURN_ON_WITH_MODE": re.compile(r"((暖|冷)房|クーラ(ー|)).*(つ|付)けて"),
         "AIRCONTROL_TURN_ON": re.compile(r"(つ|付)けて"),
         "AIRCONTROL_TURN_OFF": re.compile(r"(け|消)して"),
@@ -102,7 +105,31 @@ def on_message(line_event):
 
     res = {"None": "None"}
 
-    if ptn["AIRCONTROL_TURN_ON_WITH_MODE"].search(message):
+    if ptn["HUMIDIFIER_TURN_ON"].search(message):
+        req = {
+            "operation": "post",
+            "switch": "ON",
+        }
+        res = post_lambda(LAMBDA_HUMIDIFIER, req)
+
+        if "switch" in res:
+            reply_body = "加湿器つけたよ！"
+        else:
+            reply_body = reply_error
+
+    elif ptn["HUMIDIFIER_TURN_OFF"].search(message):
+        req = {
+            "operation": "post",
+            "switch": "OFF",
+        }
+        res = post_lambda(LAMBDA_HUMIDIFIER, req)
+
+        if "switch" in res:
+            reply_body = "加湿器消したよ！"
+        else:
+            reply_body = reply_error
+
+    elif ptn["AIRCONTROL_TURN_ON_WITH_MODE"].search(message):
         if re.search(r"冷房|クーラ(ー|)", message):
             mode = "cooling"
         else:
