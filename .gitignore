@@ -4,3 +4,4 @@ samconfig.toml
 *.crt
 *.key
 *.pem
+credentials.json

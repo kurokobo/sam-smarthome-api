@@ -62,6 +62,12 @@ Parameters:
   LineMasterUserId:
     Type: String
     NoEcho: true
+  SpreadSheetId:
+    Type: String
+    NoEcho: true
+  SpreadSheetRange:
+    Type: String
+    NoEcho: true
 
 Resources:
   LineBotRole:
@@ -266,4 +272,15 @@ Resources:
         Variables:
           SMARTHOME_ACCESS_TOKEN: !Ref SmartHomeAccessToken
           LINE_MASTER_USER_ID: !Ref LineMasterUserId
-        
+  Accounting:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: SMARTHOME-Accounting
+      CodeUri: accounting/
+      Handler: app.lambda_handler
+      Runtime: python3.8
+      Environment:
+        Variables:
+          SMARTHOME_ACCESS_TOKEN: !Ref SmartHomeAccessToken
+          SPREADSHEET_ID: !Ref SpreadSheetId
+          SPREADSHEET_RANGE: !Ref SpreadSheetRange

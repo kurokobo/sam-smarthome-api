@@ -44,14 +44,19 @@ def lambda_handler(event, context):
     return response_ok
 
 
-def post_lambda(name, dict):
+def post_lambda(name, dict, nohead=False):
 
     print("Invoke Lambda : %s" % name)
     print("Invoke Lambda with data : %s" % dict)
-    request = {
-        "headers": {"X-Smarthome-Authorization": os.getenv("SMARTHOME_ACCESS_TOKEN")},
-        "body": json.dumps(dict),
-    }
+    if nohead:
+        request = dict
+    else:
+        request = {
+            "headers": {
+                "X-Smarthome-Authorization": os.getenv("SMARTHOME_ACCESS_TOKEN")
+            },
+            "body": json.dumps(dict),
+        }
 
     response = (
         boto3.client("lambda")
@@ -64,7 +69,9 @@ def post_lambda(name, dict):
         .decode("utf-8")
     )
 
-    response = json.loads(response)["body"]
+    if not nohead:
+        response = json.loads(response)["body"]
+
     response = json.loads(response)
 
     print("Response body is : %s" % response)
@@ -88,8 +95,11 @@ def on_message(line_event):
     LAMBDA_AIRCONTROL = "SMARTHOME-AirControl"
     LAMBDA_QOAIR = "SMARTHOME-QoAir"
     LAMBDA_HUMIDIFIER = "SMARTHOME-Humidifier"
+    LAMBDA_ACCOUNTING = "SMARTHOME-Accounting"
+    LAMBDA_LINE_PUSH = "SMARTHOME-LineBot-Push"
 
     ptn = {
+        "ACCOUNTING_LOGGING": re.compile(r".+[,、 　][0-9]+ *円*$"),
         "HUMIDIFIER_TURN_ON": re.compile(r"(加湿器).*(つ|付)けて"),
         "HUMIDIFIER_TURN_OFF": re.compile(r"(加湿器).*(け|消)して"),
         "AIRCONTROL_TURN_ON_WITH_MODE": re.compile(r"((暖|冷)房|クーラ(ー|)).*(つ|付)けて"),
@@ -105,7 +115,28 @@ def on_message(line_event):
 
     res = {"None": "None"}
 
-    if ptn["HUMIDIFIER_TURN_ON"].search(message):
+    if ptn["ACCOUNTING_LOGGING"].fullmatch(message):
+        match = re.search(r"(?P<item>.+)[,、 　](?P<price>[0-9]+) *円*$", message)
+        req = {
+            "operation": "append",
+            "user_id": line_event.source.user_id,
+            "item": match.group("item"),
+            "price": match.group("price"),
+        }
+        line = {
+            "user_id": req["user_id"],
+            "message": "%s、%s 円、記録するね。" % (req["item"], req["price"])
+        }
+        linepush = post_lambda(LAMBDA_LINE_PUSH, line, True)
+        print("Replied: %s" % linepush)
+        res = post_lambda(LAMBDA_ACCOUNTING, req)
+
+        if "updates" in res:
+            reply_body = "記録したよ！"
+        else:
+            reply_body = reply_error
+
+    elif ptn["HUMIDIFIER_TURN_ON"].search(message):
         req = {
             "operation": "post",
             "switch": "ON",
