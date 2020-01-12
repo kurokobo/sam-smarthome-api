@@ -59,6 +59,9 @@ Parameters:
   IotCoreEndpoint:
     Type: String
     NoEcho: true
+  LineMasterUserId:
+    Type: String
+    NoEcho: true
 
 Resources:
   LineBotRole:
@@ -131,7 +134,29 @@ Resources:
                 Action:
                   - "s3:*"
                 Resource: 
-                  - !Sub "arn:aws:s3:::${S3Bucket}*"
+                  - !Sub "arn:aws:s3:::${S3Bucket}*"              
+  CronJobRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: CronJobPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "lambda:InvokeFunction"
+                Resource: "*"
   LineBot:
     Type: AWS::Serverless::Function
     Properties:
@@ -229,4 +254,16 @@ Resources:
           TUYA_DEVICE_ID: !Ref TuyaDeviceId
           TUYA_LOCAL_KEY: !Ref TuyaLocalKey
           TUYA_IP_ADDRESS: !Ref TuyaIpAddress
+  CronJob:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: SMARTHOME-CronJob
+      CodeUri: cronjob/
+      Handler: app.lambda_handler
+      Role: !GetAtt CronJobRole.Arn
+      Runtime: python3.8
+      Environment:
+        Variables:
+          SMARTHOME_ACCESS_TOKEN: !Ref SmartHomeAccessToken
+          LINE_MASTER_USER_ID: !Ref LineMasterUserId
         

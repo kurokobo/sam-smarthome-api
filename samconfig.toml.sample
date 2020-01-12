@@ -8,5 +8,5 @@ s3_prefix = ""
 region = ""
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
-parameter_overrides = "LineChannelSecret= LineChannelAccessToken= SmartHomeAccessToken= RemoAccessToken= RemoApplianceId= RedisHost= RedisPort= RedisPassword= InfluxDBUrl= InfluxDBToken= InfluxDBOrganization= InfluxDBBucket= S3Bucket= TuyaDeviceId= TuyaLocalKey= TuyaIpAddress= IotCoreEndpoint="
+parameter_overrides = "LineChannelSecret= LineChannelAccessToken= SmartHomeAccessToken= RemoAccessToken= RemoApplianceId= RedisHost= RedisPort= RedisPassword= InfluxDBUrl= InfluxDBToken= InfluxDBOrganization= InfluxDBBucket= S3Bucket= TuyaDeviceId= TuyaLocalKey= TuyaIpAddress= IotCoreEndpoint= LineMasterUserId="
 
