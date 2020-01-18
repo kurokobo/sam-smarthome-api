@@ -50,6 +50,7 @@ def lambda_handler(event, context):
         "operation": "get_current_qoa",
     }
     qoa = post_lambda(LAMBDA_QOAIR, req)
+    res = {"message": "OK"}
     print("Current QoA is: %s" % qoa)
 
     if float(qoa["temperature"]) < 15.0:
